@@ -17,6 +17,13 @@ pub fn build(b: *std.build.Builder) !void {
     while (try dir_it.next()) |entry| {
         switch (entry.kind) {
             .File => {
+                if (entry.name.len != 9 or
+                    std.mem.eql(u8, entry.name[0..3], "day") == false or
+                    std.mem.eql(u8, entry.name[5..], ".zig") == false)
+                {
+                    continue;
+                }
+
                 const name = entry.name[0..5];
                 const path = try std.fmt.allocPrint(b.allocator, "src/{s}", .{entry.name});
 
