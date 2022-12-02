@@ -1,16 +1,8 @@
 const std = @import("std");
 const parseInt = std.fmt.parseInt;
 
+const println = @import("util/util.zig").println;
 const quicksort = @import("util/sort.zig").quicksort;
-
-var stdout = std.io.bufferedWriter(std.io.getStdOut().writer());
-
-fn println(comptime fmt: []const u8, args: anytype) void {
-    const writer = stdout.writer();
-    writer.print(fmt, args) catch unreachable;
-    writer.print("\n", .{}) catch unreachable;
-    stdout.flush() catch unreachable;
-}
 
 fn partOne(input_reader: anytype) !usize {
     var largest_acc: usize = 0;
