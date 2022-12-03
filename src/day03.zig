@@ -44,8 +44,34 @@ fn partOne(input_reader: anytype) !usize {
 }
 
 fn partTwo(input_reader: anytype) !usize {
-    _ = input_reader;
-    return 0;
+    var sum: usize = 0;
+
+    var group_flags: u64 = 0xFFFFFFFFFFFFFFFF;
+    var group_idx: usize = 0;
+
+    var buf = [_]u8{0} ** 64;
+    while (try input_reader.readUntilDelimiterOrEof(buf[0..], '\n')) |line| {
+        var flags: u64 = 0;
+        for (line) |x| {
+            flags |= (@as(u64, 1) << priorityOf(x));
+        }
+
+        group_flags &= flags;
+
+        if (group_idx == 2) {
+            inline for (range(1, 52)) |i| {
+                if (((group_flags >> i) & 1) > 0) {
+                    sum += i;
+                }
+            }
+            group_flags = 0xFFFFFFFFFFFFFFFF;
+            group_idx = 0;
+        } else {
+            group_idx += 1;
+        }
+    }
+
+    return sum;
 }
 
 pub fn main() !void {
