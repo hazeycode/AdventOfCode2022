@@ -25,13 +25,7 @@ fn partOne(input_reader: anytype) !usize {
         var flags: u64 = 0;
 
         for (first) |x| {
-            if (((flags >> priorityOf(x)) & 1) > 0) {
-                continue;
-            }
             for (second) |y| {
-                if (((flags >> priorityOf(y)) & 1) > 0) {
-                    continue;
-                }
                 if (x == y) {
                     flags |= (@as(u64, 1) << priorityOf(x));
                     break;
