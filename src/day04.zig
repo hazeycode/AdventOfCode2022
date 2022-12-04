@@ -8,7 +8,7 @@ const println = util.println;
 const range = util.range;
 
 fn partOne(input_reader: anytype) !usize {
-    var sum: usize = 0;
+    var count: usize = 0;
 
     var buf = [_]u8{0} ** 64;
     while (try input_reader.readUntilDelimiterOrEof(buf[0..], '\n')) |line| {
@@ -47,22 +47,56 @@ fn partOne(input_reader: anytype) !usize {
         if ((a1 >= b1 and a2 <= b2) or
             (b1 >= a1 and b2 <= a2))
         {
-            sum += 1;
+            count += 1;
         }
     }
 
-    return sum;
+    return count;
 }
 
 fn partTwo(input_reader: anytype) !usize {
-    var sum: usize = 0;
+    var count: usize = 0;
 
     var buf = [_]u8{0} ** 64;
     while (try input_reader.readUntilDelimiterOrEof(buf[0..], '\n')) |line| {
-        _ = line;
+        var fbs = fixedBufferStream(line);
+        const line_reader = fbs.reader();
+
+        var token_buf = [_]u8{0} ** 16;
+
+        const a1 = try parseInt(
+            usize,
+            try line_reader.readUntilDelimiter(token_buf[0..], '-'),
+            10,
+        );
+        const a2 = try parseInt(
+            usize,
+            try line_reader.readUntilDelimiter(token_buf[0..], ','),
+            10,
+        );
+        const b1 = try parseInt(
+            usize,
+            try line_reader.readUntilDelimiter(token_buf[0..], '-'),
+            10,
+        );
+        const b2 = try parseInt(
+            usize,
+            blk: {
+                const len = try line_reader.readAll(token_buf[0..]);
+                break :blk token_buf[0..len];
+            },
+            10,
+        );
+
+        assert(a1 <= a2);
+        assert(b1 <= b2);
+
+        if (((a1 < b1 and a2 < b1) or (a1 > b1 and a1 > b2)) == false) {
+            count += 1;
+        }
     }
 
-    return sum;
+    return count;
 }
 
 pub fn main() !void {
