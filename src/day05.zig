@@ -72,12 +72,16 @@ fn readNumStacks(reader: anytype) !usize {
 }
 
 var _stacks = [_]CrateStack{.{ .len = 0 }} ** max_stacks;
+var _reversed_stacks = [_]CrateStack{.{ .len = 0 }} ** max_stacks;
 
-fn readCrateStacks(
-    num_stacks: usize,
-    reader: anytype,
-) ![]CrateStack {
-    var temp_stacks = [_]CrateStack{try CrateStack.init(0)} ** max_stacks;
+fn readCrateStacks(stream: anytype) ![]CrateStack {
+    const num_stacks = try readNumStacks(stream.reader());
+
+    stream.reset();
+
+    const reader = stream.reader();
+
+    for (_stacks) |*stack| try stack.resize(0);
 
     var buf = [_]u8{0} ** 64;
     while (try reader.readUntilDelimiterOrEof(buf[0..], '\n')) |line| {
@@ -86,20 +90,20 @@ fn readCrateStacks(
         }
         for (try parseCrateStacksLine(num_stacks, line)) |char, i| {
             if (char >= 'A' and char <= 'Z') {
-                try temp_stacks[i].append(char);
+                try _stacks[i].append(char);
             }
         }
     }
 
-    for (_stacks) |*stack| try stack.resize(0);
+    for (_reversed_stacks) |*stack| try stack.resize(0);
 
-    for (temp_stacks) |*stack, i| {
+    for (_stacks) |*stack, i| {
         while (stack.popOrNull()) |crate| {
-            try _stacks[i].append(crate);
+            try _reversed_stacks[i].append(crate);
         }
     }
 
-    return _stacks[0..num_stacks];
+    return _reversed_stacks[0..num_stacks];
 }
 
 fn parseInstruction(line_bytes: []const u8) !Instruction {
@@ -140,13 +144,9 @@ fn parseInstruction(line_bytes: []const u8) !Instruction {
 var part_one_answer_stack = CrateStack{ .len = 0 };
 
 fn partOne(stream: anytype) ![]const u8 {
-    const num_stacks = try readNumStacks(stream.reader());
-
-    stream.reset();
+    var stacks = try readCrateStacks(stream);
 
     const reader = stream.reader();
-
-    var stacks = try readCrateStacks(num_stacks, reader);
 
     try reader.skipUntilDelimiterOrEof('\n');
 
@@ -171,13 +171,9 @@ fn partOne(stream: anytype) ![]const u8 {
 var part_two_answer_stack = CrateStack{ .len = 0 };
 
 fn partTwo(stream: anytype) ![]const u8 {
-    const num_stacks = try readNumStacks(stream.reader());
-
-    stream.reset();
+    var stacks = try readCrateStacks(stream);
 
     const reader = stream.reader();
-
-    var stacks = try readCrateStacks(num_stacks, reader);
 
     try reader.skipUntilDelimiterOrEof('\n');
 
@@ -207,7 +203,7 @@ fn partTwo(stream: anytype) ![]const u8 {
 }
 
 pub fn main() !void {
-    var input_stream = std.io.fixedBufferStream(@embedFile("data/day05.txt"));
+    var input_stream = fixedBufferStream(@embedFile("data/day05.txt"));
 
     const part_one_answer = try partOne(&input_stream);
     println("part one answer = {s}", .{part_one_answer});
@@ -229,7 +225,7 @@ test "parse crate stack line" {
 }
 
 test "read crate stacks" {
-    var test_stream = std.io.fixedBufferStream(
+    var test_stream = fixedBufferStream(
         \\    [D]    
         \\[N] [C]    
         \\[Z] [M] [P]
@@ -242,12 +238,7 @@ test "read crate stacks" {
         "P",
     };
 
-    const num_stacks = try readNumStacks(test_stream.reader());
-    try testing.expectEqual(expected.len, num_stacks);
-
-    test_stream.reset();
-
-    const result = try readCrateStacks(num_stacks, test_stream.reader());
+    const result = try readCrateStacks(&test_stream);
 
     for (expected) |stack, i| {
         try testing.expectEqualSlices(
@@ -272,7 +263,7 @@ test "parse instruction" {
 }
 
 test "both parts" {
-    var test_stream = std.io.fixedBufferStream(
+    var test_stream = fixedBufferStream(
         \\    [D]    
         \\[N] [C]    
         \\[Z] [M] [P]
