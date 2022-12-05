@@ -214,9 +214,6 @@ test "parse crate stack line" {
 }
 
 test "read crate stacks" {
-    // TODO: Hardcoding number of stacks is maybe cheating a bit!
-    const num_stacks = 3;
-
     var test_stream = std.io.fixedBufferStream(
         \\    [D]    
         \\[N] [C]    
@@ -224,18 +221,18 @@ test "read crate stacks" {
         \\ 1   2   3 
     );
 
-    const expected = [num_stacks][]const u8{
+    const expected = [_][]const u8{
         "ZN",
         "MCD",
         "P",
     };
 
-    const result = try readCrateStacks(num_stacks, test_stream.reader());
+    const result = try readCrateStacks(expected.len, test_stream.reader());
 
-    inline for (range(0, num_stacks - 1)) |i| {
+    for (expected) |stack, i| {
         try testing.expectEqualSlices(
             u8,
-            expected[i],
+            stack,
             result[i].constSlice(),
         );
     }
