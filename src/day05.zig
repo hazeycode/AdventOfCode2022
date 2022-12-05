@@ -144,7 +144,41 @@ fn partOne(
 
     var out_buf = [_]u8{0} ** num_stacks;
     for (stacks) |*stack, i| {
-        out_buf[i] = stack.pop();
+        out_buf[i] = stack.popOrNull() orelse ' ';
+    }
+
+    return out_buf;
+}
+
+fn partTwo(
+    comptime num_stacks: usize,
+    reader: anytype,
+) ![num_stacks]u8 {
+    var stacks = try readCrateStacks(num_stacks, reader);
+
+    try reader.skipUntilDelimiterOrEof('\n');
+
+    var buf = [_]u8{0} ** 64;
+    while (try reader.readUntilDelimiterOrEof(buf[0..], '\n')) |line| {
+        const instruction = try parseInstruction(line);
+
+        var temp_stack = try CrateStack.init(0);
+
+        var i: usize = 0;
+        while (i < instruction.amount) : (i += 1) {
+            const crate = stacks[instruction.from - 1].popOrNull() orelse break;
+            try temp_stack.append(crate);
+        }
+
+        while (temp_stack.len > 0) {
+            const crate = temp_stack.popOrNull() orelse break;
+            try stacks[instruction.to - 1].append(crate);
+        }
+    }
+
+    var out_buf = [_]u8{0} ** num_stacks;
+    for (stacks) |*stack, i| {
+        out_buf[i] = stack.popOrNull() orelse ' ';
     }
 
     return out_buf;
@@ -157,6 +191,9 @@ pub fn main() !void {
     println("part one answer = {s}", .{part_one_answer});
 
     input_stream.reset();
+
+    const part_two_answer = try partTwo(9, input_stream.reader());
+    println("part two answer = {s}", .{part_two_answer});
 }
 
 test "parse crate stack line" {
@@ -210,7 +247,7 @@ test "parse instruction" {
     );
 }
 
-test "part one" {
+test "both parts" {
     var test_stream = std.io.fixedBufferStream(
         \\    [D]    
         \\[N] [C]    
@@ -223,7 +260,11 @@ test "part one" {
         \\move 1 from 1 to 2
     );
 
-    const answer = try partOne(3, test_stream.reader());
+    const part_one_answer = try partOne(3, test_stream.reader());
+    try testing.expectEqualSlices(u8, "CMZ", &part_one_answer);
 
-    try testing.expectEqualSlices(u8, "CMZ", &answer);
+    test_stream.reset();
+
+    const part_two_answer = try partTwo(3, test_stream.reader());
+    try testing.expectEqualSlices(u8, "MCD", &part_two_answer);
 }
