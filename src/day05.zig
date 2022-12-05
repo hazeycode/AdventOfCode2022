@@ -80,12 +80,19 @@ fn readCrateStacks(
         );
         for (stacks_line) |char, i| {
             if (char >= 'A' and char <= 'Z') {
-                try stacks[i].insert(0, char);
+                try stacks[i].append(char);
             }
         }
     }
 
-    return stacks;
+    var reversed = [_]CrateStack{try CrateStack.init(0)} ** num_stacks;
+    for (stacks) |*stack, i| {
+        while (stack.popOrNull()) |crate| {
+            try reversed[i].append(crate);
+        }
+    }
+
+    return reversed;
 }
 
 fn parseInstruction(line_bytes: []const u8) !Instruction {
@@ -223,7 +230,7 @@ test "read crate stacks" {
         "P",
     };
 
-    var result = try readCrateStacks(num_stacks, test_stream.reader());
+    const result = try readCrateStacks(num_stacks, test_stream.reader());
 
     inline for (range(0, num_stacks - 1)) |i| {
         try testing.expectEqualSlices(
