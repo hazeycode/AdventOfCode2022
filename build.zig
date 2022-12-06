@@ -27,7 +27,7 @@ pub fn build(b: *std.build.Builder) !void {
                 const name = entry.name[0..5];
                 const path = try std.fmt.allocPrint(b.allocator, "src/{s}", .{entry.name});
 
-                const exe = b.addExecutable(entry.name, path);
+                const exe = b.addExecutable(name, path);
                 exe.setTarget(target);
                 exe.setBuildMode(mode);
                 exe.install();
