@@ -8,12 +8,12 @@ const println = util.println;
 
 const Bitset = std.StaticBitSet(256);
 
-fn partOne(stream: anytype) !usize {
+fn findMarker(comptime marker_len: usize, stream: anytype) !usize {
     const reader = stream.reader();
 
     var count: usize = 0;
 
-    var buf = [_]u8{0} ** 4;
+    var buf = [_]u8{0} ** marker_len;
     var cur_write: usize = 0;
 
     while (true) {
@@ -41,11 +41,11 @@ fn partOne(stream: anytype) !usize {
 pub fn main() !void {
     var input_stream = fixedBufferStream(@embedFile("data/day06.txt"));
 
-    const part_one_answer = try partOne(&input_stream);
+    const part_one_answer = try findMarker(4, &input_stream);
     println("part one answer = {}", .{part_one_answer});
 
-    // input_stream.reset();
+    input_stream.reset();
 
-    // const part_two_answer = try partTwo(&input_stream);
-    // println("part two answer = {}", .{part_two_answer});
+    const part_two_answer = try findMarker(14, &input_stream);
+    println("part two answer = {}", .{part_two_answer});
 }
