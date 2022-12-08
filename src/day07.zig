@@ -240,6 +240,27 @@ fn partOne(reader: anytype) !usize {
     return total;
 }
 
+fn partTwo(reader: anytype) !usize {
+    const fs = try parseFileTree(reader);
+
+    const total_space = 70000000;
+    const space_required = 30000000;
+    const used_space = fs.root.getTotalSize();
+    const free_space = total_space - used_space;
+    const to_delete = space_required - free_space;
+
+    var smallest: usize = used_space;
+    for (fs.entries.constSlice()) |entry| {
+        if (entry.size == 0) {
+            const dir_size = entry.getTotalSize();
+            if (dir_size >= to_delete and dir_size < smallest) {
+                smallest = dir_size;
+            }
+        }
+    }
+    return smallest;
+}
+
 pub fn main() !void {
     var input_stream = fixedBufferStream(@embedFile("data/day07.txt"));
 
@@ -248,8 +269,8 @@ pub fn main() !void {
 
     input_stream.reset();
 
-    // const part_two_answer = try partTwo(input_stream.reader());
-    // println("part two answer = {}", .{part_two_answer});
+    const part_two_answer = try partTwo(input_stream.reader());
+    println("part two answer = {}", .{part_two_answer});
 }
 
 test "FileTree" {
