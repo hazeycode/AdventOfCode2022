@@ -225,9 +225,7 @@ fn parseFileTree(reader: anytype) !FileTree {
     return fs;
 }
 
-fn partOne(reader: anytype) !usize {
-    const fs = try parseFileTree(reader);
-
+fn partOne(fs: *const FileTree) !usize {
     var total: usize = 0;
     for (fs.entries.constSlice()) |entry| {
         if (entry.size == 0) {
@@ -240,9 +238,7 @@ fn partOne(reader: anytype) !usize {
     return total;
 }
 
-fn partTwo(reader: anytype) !usize {
-    const fs = try parseFileTree(reader);
-
+fn partTwo(fs: *const FileTree) !usize {
     const total_space = 70000000;
     const space_required = 30000000;
     const used_space = fs.root.getTotalSize();
@@ -264,12 +260,14 @@ fn partTwo(reader: anytype) !usize {
 pub fn main() !void {
     var input_stream = fixedBufferStream(@embedFile("data/day07.txt"));
 
-    const part_one_answer = try partOne(input_stream.reader());
+    const fs = try parseFileTree(input_stream.reader());
+
+    const part_one_answer = try partOne(&fs);
     println("part one answer = {}", .{part_one_answer});
 
     input_stream.reset();
 
-    const part_two_answer = try partTwo(input_stream.reader());
+    const part_two_answer = try partTwo(&fs);
     println("part two answer = {}", .{part_two_answer});
 }
 
@@ -389,8 +387,5 @@ test {
 
     test_stream.reset();
 
-    try testing.expectEqual(
-        @as(usize, 95437),
-        try partOne(test_stream.reader()),
-    );
+    try testing.expectEqual(@as(usize, 95437), try partOne(&fs));
 }
