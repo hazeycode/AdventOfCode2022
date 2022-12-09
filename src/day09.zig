@@ -3,6 +3,7 @@ const testing = std.testing;
 const assert = std.debug.assert;
 const debugPrint = std.debug.print;
 const tokenize = std.mem.tokenize;
+const TokenIterator = std.mem.TokenIterator;
 const parseInt = std.fmt.parseInt;
 
 const Dir = enum { up, right, down, left };
@@ -12,22 +13,54 @@ const Location = struct {
     y: i32 = 0,
 };
 
-const Visited = std.AutoHashMap(Location, void);
+const Visited = std.AutoArrayHashMap(Location, void);
 
-fn parseLine(line: []const u8) struct { dir: Dir, dist: u16 } {
-    var it = tokenize(u8, line, " ");
-    const dir: Dir = switch (it.next().?[0]) {
-        'U' => .up,
-        'R' => .right,
-        'D' => .down,
-        'L' => .left,
-        else => @panic("invalid input"),
-    };
-    const dist = parseInt(u16, it.next().?, 10) catch @panic("invalid input");
+const Move = struct { dir: Dir, dist: u16 };
+
+fn parseMoves(input: []const u8) struct {
+    it: TokenIterator(u8),
+
+    pub fn next(self: *@This()) ?Move {
+        if (self.it.next()) |line| {
+            var line_it = tokenize(u8, line, " ");
+            const dir: Dir = switch (line_it.next().?[0]) {
+                'U' => .up,
+                'R' => .right,
+                'D' => .down,
+                'L' => .left,
+                else => @panic("invalid input"),
+            };
+            const dist = parseInt(u16, line_it.next().?, 10) catch {
+                @panic("invalid input");
+            };
+            return .{
+                .dir = dir,
+                .dist = dist,
+            };
+        }
+        return null;
+    }
+} {
     return .{
-        .dir = dir,
-        .dist = dist,
+        .it = tokenize(u8, input, "\n"),
     };
+}
+
+fn applyMove(dir: Dir, head: *Location, tail: []Location) void {
+    switch (dir) {
+        .up => head.y += 1,
+        .right => head.x += 1,
+        .down => head.y -= 1,
+        .left => head.x -= 1,
+    }
+    if (updateKnot(&tail[0], head)) {
+        var j: usize = 1;
+        while (j < tail.len) : (j += 1) {
+            if (updateKnot(&tail[j], &tail[j - 1]) == false) {
+                break;
+            }
+        }
+    }
 }
 
 fn updateKnot(knot: *Location, prev_knot: *const Location) bool {
@@ -64,28 +97,11 @@ fn recordTailHistory(
 
     try history.put(tail[tail.len - 1], {});
 
-    var it = tokenize(u8, input, "\n");
-    while (it.next()) |line| {
-        const move = parseLine(line);
-
+    var it = parseMoves(input);
+    while (it.next()) |move| {
         var i: usize = 0;
         while (i < move.dist) : (i += 1) {
-            switch (move.dir) {
-                .up => head.y += 1,
-                .right => head.x += 1,
-                .down => head.y -= 1,
-                .left => head.x -= 1,
-            }
-
-            if (updateKnot(&tail[0], &head)) {
-                var j: usize = 1;
-                while (j < tail.len) : (j += 1) {
-                    if (updateKnot(&tail[j], &tail[j - 1]) == false) {
-                        break;
-                    }
-                }
-            }
-
+            applyMove(move.dir, &head, &tail);
             try history.put(tail[tail.len - 1], {});
         }
     }
@@ -94,27 +110,27 @@ fn recordTailHistory(
 pub fn main() !void {
     const println = @import("util/util.zig").println;
 
-    const data = @embedFile("data/day09.txt");
+    const input = @embedFile("data/day09.txt");
 
     var allocator = std.heap.page_allocator;
     var tail_history = Visited.init(allocator);
     defer tail_history.deinit();
 
     { // part one
-        try recordTailHistory(1, data, &tail_history);
+        try recordTailHistory(1, input, &tail_history);
         println("part one answer: {}", .{tail_history.count()});
     }
 
     tail_history.clearRetainingCapacity();
 
     { // part two
-        try recordTailHistory(10, data, &tail_history);
+        try recordTailHistory(10, input, &tail_history);
         println("part two answer: {}", .{tail_history.count()});
     }
 }
 
 test {
-    const data =
+    const test_input =
         \\R 4
         \\U 4
         \\L 3
@@ -128,31 +144,17 @@ test {
     var tail_history = Visited.init(testing.allocator);
     defer tail_history.deinit();
 
-    try recordTailHistory(1, data, &tail_history);
+    try recordTailHistory(1, test_input, &tail_history);
     try testing.expectEqual(@as(usize, 13), tail_history.count());
-}
 
-test {
-    const data =
-        \\R 4
-        \\U 4
-        \\L 3
-        \\D 1
-        \\R 4
-        \\D 1
-        \\L 5
-        \\R 2
-    ;
+    tail_history.clearRetainingCapacity();
 
-    var tail_history = Visited.init(testing.allocator);
-    defer tail_history.deinit();
-
-    try recordTailHistory(9, data, &tail_history);
+    try recordTailHistory(9, test_input, &tail_history);
     try testing.expectEqual(@as(usize, 1), tail_history.count());
 }
 
 test {
-    const data =
+    const test_input =
         \\R 5
         \\U 8
         \\L 8
@@ -166,6 +168,49 @@ test {
     var tail_history = Visited.init(testing.allocator);
     defer tail_history.deinit();
 
-    try recordTailHistory(9, data, &tail_history);
+    try recordTailHistory(9, test_input, &tail_history);
     try testing.expectEqual(@as(usize, 36), tail_history.count());
+
+    const expected = &[_]Location{
+        .{ .x = 0, .y = 0 },
+        .{ .x = 1, .y = 1 },
+        .{ .x = 2, .y = 2 },
+        .{ .x = 1, .y = 3 },
+        .{ .x = 2, .y = 4 },
+        .{ .x = 3, .y = 5 },
+        .{ .x = 4, .y = 5 },
+        .{ .x = 5, .y = 5 },
+        .{ .x = 6, .y = 4 },
+        .{ .x = 7, .y = 3 },
+        .{ .x = 8, .y = 2 },
+        .{ .x = 9, .y = 1 },
+        .{ .x = 10, .y = 0 },
+        .{ .x = 9, .y = -1 },
+        .{ .x = 8, .y = -2 },
+        .{ .x = 7, .y = -3 },
+        .{ .x = 6, .y = -4 },
+        .{ .x = 5, .y = -5 },
+        .{ .x = 4, .y = -5 },
+        .{ .x = 3, .y = -5 },
+        .{ .x = 2, .y = -5 },
+        .{ .x = 1, .y = -5 },
+        .{ .x = 0, .y = -5 },
+        .{ .x = -1, .y = -5 },
+        .{ .x = -2, .y = -5 },
+        .{ .x = -3, .y = -4 },
+        .{ .x = -4, .y = -3 },
+        .{ .x = -5, .y = -2 },
+        .{ .x = -6, .y = -1 },
+        .{ .x = -7, .y = 0 },
+        .{ .x = -8, .y = 1 },
+        .{ .x = -9, .y = 2 },
+        .{ .x = -10, .y = 3 },
+        .{ .x = -11, .y = 4 },
+        .{ .x = -11, .y = 5 },
+        .{ .x = -11, .y = 6 },
+    };
+
+    for (tail_history.keys()) |location, i| {
+        try testing.expectEqual(expected[i], location);
+    }
 }
