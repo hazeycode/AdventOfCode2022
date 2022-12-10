@@ -2,6 +2,14 @@ const std = @import("std");
 
 var stdout = std.io.bufferedWriter(std.io.getStdOut().writer());
 
+pub fn print(comptime fmt: []const u8, args: anytype) void {
+    stdout.writer().print(fmt, args) catch unreachable;
+}
+
+pub fn flushStdOut() void {
+    stdout.flush() catch unreachable;
+}
+
 pub fn println(comptime fmt: []const u8, args: anytype) void {
     const writer = stdout.writer();
     writer.print(fmt, args) catch unreachable;
