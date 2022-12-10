@@ -53,29 +53,28 @@ fn applyMove(dir: Dir, head: *Location, tail: []Location) void {
         .down => head.y -= 1,
         .left => head.x -= 1,
     }
-    if (updateKnot(&tail[0], head)) {
-        var j: usize = 1;
-        while (j < tail.len) : (j += 1) {
-            if (updateKnot(&tail[j], &tail[j - 1]) == false) {
+    if (updateKnot(&tail[0], head.*)) {
+        for (tail[1..]) |*knot, j| {
+            if (updateKnot(knot, tail[j]) == false) {
                 break;
             }
         }
     }
 }
 
-fn updateKnot(knot: *Location, prev_knot: *const Location) bool {
-    const dx = prev_knot.x - knot.x;
-    const dy = prev_knot.y - knot.y;
-
+fn updateKnot(knot: *Location, prev: Location) bool {
+    const dx = prev.x - knot.x;
+    const dy = prev.y - knot.y;
     const absx = if (dx < 0) -dx else dx;
     const absy = if (dy < 0) -dy else dy;
-    if (absx <= 1 and absy <= 1) {
-        return false;
-    }
 
-    if (knot.y == prev_knot.y) {
+    assert(absx <= 2 and absy <= 2);
+
+    if (absx <= 1 and absy <= 1) return false;
+
+    if (knot.y == prev.y) {
         knot.x += if (dx < 0) -1 else 1;
-    } else if (knot.x == prev_knot.x) {
+    } else if (knot.x == prev.x) {
         knot.y += if (dy < 0) -1 else 1;
     } else {
         knot.x += if (dx < 0) -1 else 1;
@@ -124,7 +123,7 @@ pub fn main() !void {
     tail_history.clearRetainingCapacity();
 
     { // part two
-        try recordTailHistory(10, input, &tail_history);
+        try recordTailHistory(9, input, &tail_history);
         println("part two answer: {}", .{tail_history.count()});
     }
 }
@@ -151,6 +150,8 @@ test {
 
     try recordTailHistory(9, test_input, &tail_history);
     try testing.expectEqual(@as(usize, 1), tail_history.count());
+
+    tail_history.clearRetainingCapacity();
 }
 
 test {
