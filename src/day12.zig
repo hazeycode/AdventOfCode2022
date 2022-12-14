@@ -162,5 +162,17 @@ pub fn main() !void {
         debugPrint("\n", .{});
     }
 
-    println("part one answer = {}", .{getTile(&map, map.start_location).*.distance});
+    const start_tile = getTile(&map, map.start_location);
+
+    println("part one answer = {}", .{start_tile.distance});
+
+    var min = start_tile.distance;
+    for (map.tiles) |row| {
+        for (row) |tile| {
+            if (tile.height == 0 and tile.distance < min) {
+                min = tile.distance;
+            }
+        }
+    }
+    println("part two answer = {}", .{min});
 }
