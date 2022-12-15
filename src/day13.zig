@@ -10,6 +10,8 @@ const ArenaAllocator = std.heap.ArenaAllocator;
 const util = @import("util/util.zig");
 const println = util.println;
 
+const quicksort = @import("util/sort.zig").quicksort;
+
 const List = std.TailQueue(Value);
 
 const Value = union(enum) {
@@ -123,9 +125,7 @@ fn check(allocator: std.mem.Allocator, a: Value, b: Value) !?bool {
     }
 }
 
-pub fn main() !void {
-    var input = fixedBufferStream(@embedFile("data/day13.txt"));
-
+fn partOne(input_stream: anytype) !usize {
     var arena = ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
@@ -133,13 +133,80 @@ pub fn main() !void {
 
     var sum: usize = 0;
     var i: usize = 1;
-    while (try parseNextPair(allocator, input.reader())) |pair| {
+    while (try parseNextPair(allocator, input_stream.reader())) |pair| {
         if ((try check(allocator, pair[0], pair[1])).?) {
             sum += i;
         }
         i += 1;
     }
-    println("part one answer = {}", .{sum});
+    return sum;
+}
+
+fn partTwo(input_stream: anytype) !usize {
+    var arena = ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    const allocator = arena.allocator();
+
+    var packets = try std.BoundedArray(Value, 1024).init(0);
+
+    while (try parseNextPair(allocator, input_stream.reader())) |pair| {
+        try packets.append(pair[0]);
+        try packets.append(pair[1]);
+    }
+
+    var additonal_stream = fixedBufferStream(
+        \\[[2]]
+        \\[[6]]
+        \\
+    );
+
+    while (try parseNextPair(allocator, additonal_stream.reader())) |pair| {
+        try packets.append(pair[0]);
+        try packets.append(pair[1]);
+    }
+
+    quicksort(
+        packets.slice(),
+        0,
+        @intCast(isize, packets.len - 1),
+        struct {
+            allocator: std.mem.Allocator,
+            pub fn compare(self: @This(), a: Value, b: Value) bool {
+                return (check(self.allocator, a, b) catch @panic("ohno!")).?;
+            }
+        }{ .allocator = allocator },
+    );
+
+    var divider1_idx: usize = 0;
+    var divider2_idx: usize = 0;
+    for (packets.constSlice()) |packet, i| {
+        if (packet == .list and packet.list.len == 1) {
+            if (packet.list.first) |elem| {
+                if (elem.data == .list and elem.data.list.len == 1) {
+                    if (elem.data.list.first) |inner| {
+                        if (inner.data == .integer) {
+                            if (inner.data.integer == 2) {
+                                divider1_idx = i + 1;
+                            } else if (inner.data.integer == 6) {
+                                divider2_idx = i + 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return divider1_idx * divider2_idx;
+}
+
+pub fn main() !void {
+    var input_stream = fixedBufferStream(@embedFile("data/day13.txt"));
+    println("part one answer = {}", .{try partOne(&input_stream)});
+    input_stream.reset();
+    println("part two answer = {}", .{try partTwo(&input_stream)});
 }
 
 test {
