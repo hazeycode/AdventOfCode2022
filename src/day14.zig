@@ -16,7 +16,7 @@ const RockPath = std.BoundedArray(Coord, 32);
 
 const Tile = enum(u2) { empty, rock, sand };
 
-const TileMap = [200][600]Tile;
+const TileMap = [200][700]Tile;
 
 fn parseRockPath(bytes: []const u8) !RockPath {
     var path = try RockPath.init(0);
@@ -70,7 +70,7 @@ fn mapFillRockPath(tile_map: *TileMap, path: *const RockPath) void {
     }
 }
 
-fn tick(tile_map: *TileMap, cur_sand: *Coord) bool {
+fn tickPartOne(tile_map: *TileMap, cur_sand: *Coord) bool {
     const cur_x = @intCast(usize, cur_sand.x);
     const cur_y = @intCast(usize, cur_sand.y);
     if (cur_y + 1 >= tile_map.len) {
@@ -101,33 +101,100 @@ fn tick(tile_map: *TileMap, cur_sand: *Coord) bool {
     return true;
 }
 
+fn tickPartTwo(tile_map: *TileMap, cur_sand: *Coord, floor_y: usize) bool {
+    const cur_x = @intCast(usize, cur_sand.x);
+    const cur_y = @intCast(usize, cur_sand.y);
+    if (cur_y + 1 == floor_y) {
+        tile_map[cur_y][cur_x] = .sand;
+        cur_sand.* = .{ .x = 500, .y = 0 };
+    }
+    switch (tile_map[cur_y + 1][cur_x]) {
+        .empty => cur_sand.y += 1,
+        else => switch (tile_map[cur_y + 1][cur_x - 1]) {
+            .empty => {
+                cur_sand.x -= 1;
+                cur_sand.y += 1;
+            },
+            else => switch (tile_map[cur_y + 1][cur_x + 1]) {
+                .empty => {
+                    cur_sand.x += 1;
+                    cur_sand.y += 1;
+                },
+                else => {
+                    tile_map[cur_y][cur_x] = .sand;
+                    if (cur_y == 0 and cur_x == 500) {
+                        return false;
+                    }
+                    cur_sand.* = .{ .x = 500, .y = 0 };
+                },
+            },
+        },
+    }
+    return true;
+}
+
 pub fn main() !void {
     var input_stream = fixedBufferStream(@embedFile("data/day14.txt"));
     const reader = input_stream.reader();
 
-    var tile_map: TileMap = undefined;
-    for (tile_map) |*row| {
-        std.mem.set(Tile, row, .empty);
-    }
-
-    var buf: [256]u8 = undefined;
-    while (try reader.readUntilDelimiterOrEof(&buf, '\n')) |line| {
-        const rock_path = try parseRockPath(line);
-        mapFillRockPath(&tile_map, &rock_path);
-    }
-
-    var sand = Coord{ .x = 500, .y = 0 };
-
-    while (tick(&tile_map, &sand)) {}
-
-    var count: usize = 0;
-    for (tile_map) |row| {
-        for (row) |tile| {
-            if (tile == .sand) count += 1;
+    { // part one
+        var tile_map: TileMap = undefined;
+        for (tile_map) |*row| {
+            std.mem.set(Tile, row, .empty);
         }
+
+        var buf: [256]u8 = undefined;
+        while (try reader.readUntilDelimiterOrEof(&buf, '\n')) |line| {
+            const rock_path = try parseRockPath(line);
+            mapFillRockPath(&tile_map, &rock_path);
+        }
+
+        var sand = Coord{ .x = 500, .y = 0 };
+
+        while (tickPartOne(&tile_map, &sand)) {}
+
+        var count: usize = 0;
+        for (tile_map) |row| {
+            for (row) |tile| {
+                if (tile == .sand) count += 1;
+            }
+        }
+
+        println("part one anwser = {}", .{count});
     }
 
-    println("part one anwser = {}", .{count});
+    input_stream.reset();
+
+    { // part two
+        var tile_map: TileMap = undefined;
+        for (tile_map) |*row| {
+            std.mem.set(Tile, row, .empty);
+        }
+
+        var floor_y: usize = 0;
+        var buf: [256]u8 = undefined;
+        while (try reader.readUntilDelimiterOrEof(&buf, '\n')) |line| {
+            const rock_path = try parseRockPath(line);
+            for (rock_path.constSlice()) |coord| {
+                if (floor_y < coord.y) floor_y = @intCast(usize, coord.y);
+            }
+            mapFillRockPath(&tile_map, &rock_path);
+        }
+        floor_y += 2;
+
+        var sand = Coord{ .x = 500, .y = 0 };
+
+        while (tickPartTwo(&tile_map, &sand, floor_y)) {}
+
+        var count: usize = 0;
+        for (tile_map) |row| {
+            for (row) |tile| {
+                if (tile == .sand) count += 1;
+            }
+        }
+
+        println("part two anwser = {}", .{count});
+    }
 }
 
 test {
@@ -176,7 +243,7 @@ test {
 
     var sand = Coord{ .x = 500, .y = 0 };
 
-    while (tick(&tile_map, &sand)) {}
+    while (tickPartOne(&tile_map, &sand)) {}
 
     var count: usize = 0;
     for (tile_map) |row| {
